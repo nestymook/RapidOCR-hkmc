@@ -1,0 +1,102 @@
+# RapidOCR HKMC Configuration - GPU Only
+# This configuration uses NVIDIA GPU (CUDA) for all models (cls, det, rec)
+# Best for: High-throughput batch processing on systems with NVIDIA GPU
+# Requirements: NVIDIA GPU with CUDA support, CUDA Toolkit, cuDNN, onnxruntime-gpu
+
+Global:
+    text_score: 0.5
+    use_det: true
+    use_cls: true
+    use_rec: true
+    min_height: 30
+    width_height_ratio: 8
+    max_side_len: 2000
+    min_side_len: 30
+    return_word_box: false
+    return_single_char_box: false
+    font_path: null
+    log_level: "info"
+
+EngineConfig:
+    onnxruntime:
+        # Threading configuration
+        intra_op_num_threads: -1
+        inter_op_num_threads: -1
+        enable_cpu_mem_arena: false
+        
+        # GPU (CUDA) Configuration
+        use_cuda: true                        # Enable CUDA for all models
+        cuda_ep_cfg:
+            device_id: 0                      # Use first GPU (change to 1, 2, etc. for multi-GPU)
+            arena_extend_strategy: "kNextPowerOfTwo"
+            cudnn_conv_algo_search: "EXHAUSTIVE"  # Best performance
+            do_copy_in_default_stream: true
+        
+        use_dml: false
+        use_cann: false
+
+Cls:
+    engine_type: "onnxruntime"                # Use ONNXRuntime with CUDA
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "cls"
+    model_path: null
+    model_dir: null
+    cls_image_shape: [3, 48, 192]
+    cls_batch_num: 6
+    cls_thresh: 0.9
+    label_list: ["0", "180"]
+
+Det:
+    engine_type: "onnxruntime"                # Use ONNXRuntime with CUDA
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "det"
+    model_path: null
+    model_dir: null
+    limit_side_len: 736
+    limit_type: min
+    std: [0.5, 0.5, 0.5]
+    mean: [0.5, 0.5, 0.5]
+    thresh: 0.3
+    box_thresh: 0.5
+    max_candidates: 1000
+    unclip_ratio: 1.6
+    use_dilation: true
+    score_mode: fast
+
+Rec:
+    engine_type: "onnxruntime"                # Use ONNXRuntime with CUDA
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "rec"
+    model_path: null
+    model_dir: null
+    rec_keys_path: null
+    rec_img_shape: [3, 48, 320]
+    rec_batch_num: 6
+
+# Benefits of GPU-Only Configuration:
+# - Highest throughput for batch processing (50-200+ images/second)
+# - Best for high-volume document processing
+# - Excellent parallel processing capabilities
+# - Consistent high performance
+#
+# Expected Performance (varies by GPU):
+# - Cls: 1-3ms per image
+# - Det: 5-15ms per image
+# - Rec: 3-10ms per batch
+# - Full pipeline: 10-30ms per image
+#
+# Multi-GPU Setup:
+# - To use second GPU, set cuda_ep_cfg.device_id: 1
+# - To use third GPU, set cuda_ep_cfg.device_id: 2
+# - Check available GPUs with: nvidia-smi
+#
+# Fallback Behavior:
+# - If CUDA is not available, automatically falls back to CPU
+# - Warning message will be logged
+# - Ensure onnxruntime-gpu is installed (not just onnxruntime)

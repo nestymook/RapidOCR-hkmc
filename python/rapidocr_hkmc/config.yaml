@@ -1,0 +1,366 @@
+Global:
+    text_score: 0.5
+
+    use_det: true
+    use_cls: true
+    use_rec: true
+
+    min_height: 30
+    width_height_ratio: 8
+    max_side_len: 2000
+    min_side_len: 30
+
+    return_word_box: false
+    return_single_char_box: false
+
+    font_path: null
+    log_level: "info" # debug / info / warning / error / critical
+
+EngineConfig:
+    onnxruntime:
+        # Threading configuration for CPU execution
+        # -1 means use default (typically number of CPU cores)
+        intra_op_num_threads: -1  # Threads for parallelizing operations within a single node
+        inter_op_num_threads: -1  # Threads for parallelizing across independent nodes
+        enable_cpu_mem_arena: false  # Enable memory arena for CPU (reduces allocations)
+
+        # CPU Execution Provider Configuration
+        cpu_ep_cfg:
+            # Memory allocation strategy for CPU
+            # "kSameAsRequested": Allocate exact requested size (lower memory overhead)
+            # "kNextPowerOfTwo": Round up to next power of 2 (faster allocation)
+            arena_extend_strategy: "kSameAsRequested"
+
+        # GPU Acceleration via CUDA (NVIDIA GPUs)
+        # Set to true to enable GPU acceleration for Det and Rec models
+        # Requires: onnxruntime-gpu package and CUDA-compatible GPU
+        # Installation: pip install onnxruntime-gpu
+        # Fallback: Automatically falls back to CPU if GPU unavailable
+        # Recommended: true for Det and Rec models when GPU is available
+        use_cuda: true
+        
+        # CUDA Execution Provider Configuration
+        # These settings are applied when use_cuda is true
+        cuda_ep_cfg:
+            # GPU device selection for multi-GPU systems
+            # device_id: 0 uses first GPU, 1 uses second GPU, etc.
+            # For single GPU systems, keep at 0
+            device_id: 0
+            
+            # Memory allocation strategy for GPU
+            # "kNextPowerOfTwo": Allocate memory in powers of 2 (recommended for GPU)
+            #   - Reduces fragmentation, better for variable-size allocations
+            #   - Example: requesting 100MB allocates 128MB
+            # "kSameAsRequested": Allocate exact requested size
+            #   - Lower memory overhead but may cause fragmentation
+            arena_extend_strategy: "kNextPowerOfTwo"
+            
+            # cuDNN convolution algorithm selection strategy
+            # "EXHAUSTIVE": Search all algorithms, select fastest (best performance)
+            #   - Slower first run (algorithm search), faster subsequent runs
+            #   - Recommended for production with consistent input sizes
+            # "HEURISTIC": Use heuristics to select algorithm (faster startup)
+            #   - Faster first run, slightly slower inference
+            #   - Good for development or variable input sizes
+            # "DEFAULT": Use default algorithm (balanced)
+            cudnn_conv_algo_search: "EXHAUSTIVE"
+            
+            # Use default CUDA stream for memory copies
+            # true: Better performance in most cases
+            # false: May help with specific multi-stream scenarios
+            do_copy_in_default_stream: true
+
+        # DirectML Acceleration (Windows GPU - AMD/Intel/NVIDIA)
+        # Alternative to CUDA for Windows systems
+        # Requires: onnxruntime-directml package
+        use_dml: false
+        dm_ep_cfg: null
+
+        # CANN Acceleration (Huawei Ascend NPU)
+        # For Huawei Ascend hardware acceleration
+        use_cann: false
+        cann_ep_cfg:
+            device_id: 0
+            arena_extend_strategy: "kNextPowerOfTwo"
+            npu_mem_limit:  21474836480 # 20 * 1024 * 1024 * 1024
+            op_select_impl_mode: "high_performance"
+            optypelist_for_implmode: "Gelu"
+            enable_cann_graph: true
+
+    openvino:
+        # Device Selection for Hardware Acceleration
+        # Options: "CPU", "NPU", "GPU"
+        # - "CPU": Standard CPU execution (default, always available)
+        # - "NPU": Neural Processing Unit (Intel AI Boost, requires NPU hardware)
+        # - "GPU": Integrated or discrete GPU (Intel/AMD/NVIDIA via OpenVINO)
+        # Fallback: Automatically falls back to CPU if selected device unavailable
+        device_name: "CPU"
+        
+        # Threading Configuration
+        # -1 means use default (typically optimal for the device)
+        inference_num_threads: -1
+        
+        # Performance Optimization Hints
+        # Options: "LATENCY", "THROUGHPUT", "CUMULATIVE_THROUGHPUT", null
+        # - "LATENCY": Optimize for single-image processing (lowest latency)
+        #   Best for: Real-time applications, interactive use cases
+        # - "THROUGHPUT": Optimize for batch processing (highest throughput)
+        #   Best for: Batch document processing, high-volume scenarios
+        # - "CUMULATIVE_THROUGHPUT": Balance between latency and throughput
+        #   Best for: Mixed workloads with varying batch sizes
+        # - null: Use default optimization (balanced)
+        # Recommended for NPU: "LATENCY" for best power efficiency
+        performance_hint: null
+        
+        # Number of inference requests for parallel execution
+        # -1 means auto-detect optimal value based on device
+        # Higher values improve throughput but increase memory usage
+        performance_num_requests: -1
+        
+        # CPU-specific optimizations (applied when device_name is "CPU")
+        enable_cpu_pinning: null
+        num_streams: -1
+        enable_hyper_threading: null
+        scheduling_core_type: null
+
+    paddle:
+        cpu_math_library_num_threads: -1
+        use_npu: false
+        npu_id: 0
+        use_cuda: false
+        gpu_id: 0
+        gpu_mem: 500
+
+    torch:
+        use_cuda: false
+        gpu_id: 0
+        use_npu: false
+        npu_id: 0
+
+Det:
+    # Engine Selection: "onnxruntime", "openvino", "paddle", "torch"
+    # Recommended: "onnxruntime" with use_cuda: true for GPU acceleration
+    # GPU provides best performance for detection tasks
+    engine_type: "onnxruntime"
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+
+    task_type: "det"
+
+    model_path: null
+    model_dir: null
+
+    limit_side_len: 736
+    limit_type: min
+    std: [ 0.5, 0.5, 0.5 ]
+    mean: [ 0.5, 0.5, 0.5 ]
+
+    thresh: 0.3
+    box_thresh: 0.5
+    max_candidates: 1000
+    unclip_ratio: 1.6
+    use_dilation: true
+    score_mode: fast
+
+Cls:
+    # Engine Selection: "onnxruntime", "openvino", "paddle", "torch"
+    # Recommended: "openvino" for NPU acceleration on Intel hardware
+    # NPU provides better power efficiency for classification tasks
+    engine_type: "openvino"
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+
+    task_type: "cls"
+
+    model_path: null
+    model_dir: null
+
+    cls_image_shape: [3, 48, 192]
+    cls_batch_num: 6
+    cls_thresh: 0.9
+    label_list: ["0", "180"]
+
+Rec:
+    # Engine Selection: "onnxruntime", "openvino", "paddle", "torch"
+    # Recommended: "onnxruntime" with use_cuda: true for GPU acceleration
+    # GPU provides best performance for recognition tasks
+    engine_type: "onnxruntime"
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+
+    task_type: "rec"
+
+    model_path: null
+    model_dir: null
+
+    rec_keys_path: null
+    rec_img_shape: [3, 48, 320]
+    rec_batch_num: 6
+
+
+# ============================================================================
+# Hardware Acceleration Configuration Examples
+# ============================================================================
+
+# Example 1: NPU + GPU Configuration (Recommended for Intel hardware)
+# This is the DEFAULT configuration in this file:
+#   Cls.engine_type: "openvino"
+#   EngineConfig.openvino.device_name: "NPU"  # Change from "CPU" to "NPU"
+#   EngineConfig.openvino.performance_hint: "LATENCY"
+#   Det.engine_type: "onnxruntime"
+#   Rec.engine_type: "onnxruntime"
+#   EngineConfig.onnxruntime.use_cuda: true
+# Benefits:
+#   - NPU handles classification (power efficient, low latency)
+#   - GPU handles detection and recognition (high throughput)
+#   - Optimal resource utilization across hardware
+
+# Example 2: NPU-Only Configuration (Maximum power efficiency)
+# Set all models to use OpenVINO with NPU:
+#   Cls.engine_type: "openvino"
+#   Det.engine_type: "openvino"
+#   Rec.engine_type: "openvino"
+#   EngineConfig.openvino.device_name: "NPU"
+#   EngineConfig.openvino.performance_hint: "LATENCY"
+# Benefits:
+#   - Lowest power consumption
+#   - Good for battery-powered devices
+#   - Consistent performance across all models
+
+# Example 3: GPU-Only Configuration (Maximum throughput)
+# Set all models to use ONNXRuntime with CUDA:
+#   Cls.engine_type: "onnxruntime"
+#   Det.engine_type: "onnxruntime"
+#   Rec.engine_type: "onnxruntime"
+#   EngineConfig.onnxruntime.use_cuda: true
+#   EngineConfig.onnxruntime.cuda_ep_cfg.cudnn_conv_algo_search: "EXHAUSTIVE"
+# Benefits:
+#   - Highest throughput for batch processing
+#   - Best for high-volume document processing
+#   - Requires NVIDIA GPU with CUDA support
+
+# Example 4: CPU-Only Configuration (Maximum compatibility)
+# Keep default settings with CPU execution:
+#   Cls.engine_type: "onnxruntime"
+#   Det.engine_type: "onnxruntime"
+#   Rec.engine_type: "onnxruntime"
+#   EngineConfig.onnxruntime.use_cuda: false
+#   EngineConfig.openvino.device_name: "CPU"
+# Benefits:
+#   - Works on any hardware
+#   - No special drivers required
+#   - Predictable performance
+
+# Example 5: Multi-GPU Configuration (use second GPU)
+# Set in EngineConfig.onnxruntime.cuda_ep_cfg:
+#   device_id: 1  # Use second GPU (0-indexed)
+
+# Example 6: Optimize NPU for throughput (batch processing)
+# Set in EngineConfig.openvino:
+#   device_name: "NPU"
+#   performance_hint: "THROUGHPUT"
+#   performance_num_requests: 4  # Process 4 requests in parallel
+
+# Example 7: Optimize GPU for latency (single image processing)
+# Set in EngineConfig.onnxruntime.cuda_ep_cfg:
+#   cudnn_conv_algo_search: "EXHAUSTIVE"  # Best performance
+#   do_copy_in_default_stream: true
+
+# ============================================================================
+# Hardware Requirements and Installation
+# ============================================================================
+# 
+# NPU (Intel Neural Processing Unit):
+#   Hardware:
+#     - Intel Core Ultra processors (Meteor Lake or newer)
+#     - Intel AI Boost (NPU) enabled in BIOS
+#   Software:
+#     - OpenVINO 2023.0 or newer: pip install openvino
+#     - Intel NPU drivers (usually included with Intel graphics drivers)
+#   Verification:
+#     - python -c "from openvino.runtime import Core; print(Core().available_devices)"
+#     - Expected output should include: 'NPU'
+#   Performance:
+#     - Best for: Classification tasks, power-efficient inference
+#     - Power consumption: ~2-5W typical
+#     - Latency: 5-15ms for cls models
+#
+# GPU - CUDA (NVIDIA):
+#   Hardware:
+#     - NVIDIA GPU with CUDA Compute Capability 3.5 or higher
+#   Software:
+#     - CUDA Toolkit 11.x or 12.x installed
+#     - cuDNN 8.x installed
+#     - onnxruntime-gpu package: pip install onnxruntime-gpu
+#   Verification:
+#     - python -c "import onnxruntime; print(onnxruntime.get_available_providers())"
+#     - Expected output should include: 'CUDAExecutionProvider'
+#   Performance:
+#     - Best for: Detection and recognition tasks, high throughput
+#     - Throughput: 50-200+ images/second (depending on GPU)
+#     - Latency: 10-50ms for det+rec pipeline
+#
+# GPU - DirectML (Windows - AMD/Intel/NVIDIA):
+#   Hardware:
+#     - DirectX 12 compatible GPU (AMD, Intel, or NVIDIA)
+#   Software:
+#     - Windows 10 version 1903 (Build 18362) or higher
+#     - onnxruntime-directml package: pip install onnxruntime-directml
+#   Verification:
+#     - python -c "import onnxruntime; print(onnxruntime.get_available_providers())"
+#     - Expected output should include: 'DmlExecutionProvider'
+#   Performance:
+#     - Good for: Cross-vendor GPU support on Windows
+#     - Slightly lower performance than CUDA but broader compatibility
+#
+# CPU (Universal fallback):
+#   Hardware:
+#     - Any x86_64 or ARM64 processor
+#   Software:
+#     - onnxruntime package: pip install onnxruntime
+#     - openvino package: pip install openvino
+#   Performance:
+#     - Throughput: 5-20 images/second (depending on CPU)
+#     - Always available as fallback
+#
+# ============================================================================
+# Troubleshooting Hardware Acceleration
+# ============================================================================
+#
+# NPU not detected:
+#   1. Check if NPU is available: python -c "from openvino.runtime import Core; print(Core().available_devices)"
+#   2. Update Intel graphics drivers to latest version
+#   3. Verify Intel AI Boost is enabled in BIOS
+#   4. Check OpenVINO version: pip show openvino (need 2023.0+)
+#   5. System will automatically fall back to CPU with warning in logs
+#
+# GPU (CUDA) not detected:
+#   1. Check CUDA installation: nvidia-smi
+#   2. Verify CUDA version matches onnxruntime-gpu requirements
+#   3. Check cuDNN installation
+#   4. Update NVIDIA drivers to latest version
+#   5. Verify onnxruntime-gpu is installed (not just onnxruntime)
+#   6. System will automatically fall back to CPU with warning in logs
+#
+# Performance issues:
+#   1. Check device selection in logs at startup
+#   2. Verify correct execution provider is being used
+#   3. For NPU: Try different performance_hint values
+#   4. For GPU: Try different cudnn_conv_algo_search values
+#   5. Monitor resource usage (GPU/NPU utilization)
+#   6. Check for thermal throttling on mobile devices
+#
+# Memory issues:
+#   1. For GPU: Reduce batch sizes (cls_batch_num, rec_batch_num)
+#   2. For GPU: Adjust cuda_ep_cfg.arena_extend_strategy
+#   3. For NPU: Reduce performance_num_requests
+#   4. Monitor memory usage during inference
+#
+# Logs and debugging:
+#   - Set Global.log_level: "debug" for detailed information
+#   - Check logs for device selection and fallback warnings
+#   - Look for execution provider initialization messages
+#   - Verify model loading and compilation messages

@@ -1,0 +1,261 @@
+# RapidOCR HKMC Configuration - Offline Mode Example
+# This configuration uses local model files (no internet required)
+#
+# IMPORTANT: Update the model_path values to point to your local model files
+# before using this configuration.
+
+Global:
+    text_score: 0.5
+    use_det: true
+    use_cls: true
+    use_rec: true
+    min_height: 30
+    width_height_ratio: 8
+    max_side_len: 2000
+    min_side_len: 30
+    return_word_box: false
+    return_single_char_box: false
+    font_path: null
+    log_level: "info"
+
+EngineConfig:
+    # OpenVINO Configuration for NPU (used by Cls model)
+    openvino:
+        device_name: "NPU"                    # Use Intel NPU for classification
+        inference_num_threads: -1
+        performance_hint: "LATENCY"           # Optimize for low latency
+        performance_num_requests: -1
+        enable_cpu_pinning: null
+        num_streams: -1
+        enable_hyper_threading: null
+        scheduling_core_type: null
+    
+    # ONNXRuntime Configuration for GPU (used by Det and Rec models)
+    onnxruntime:
+        intra_op_num_threads: -1
+        inter_op_num_threads: -1
+        enable_cpu_mem_arena: false
+        
+        # GPU (CUDA) Configuration
+        use_cuda: true                        # Enable CUDA for detection/recognition
+        cuda_ep_cfg:
+            device_id: 0                      # Use first GPU
+            arena_extend_strategy: "kNextPowerOfTwo"
+            cudnn_conv_algo_search: "EXHAUSTIVE"
+            do_copy_in_default_stream: true
+        
+        cpu_ep_cfg:
+            arena_extend_strategy: "kSameAsRequested"
+        
+        use_dml: false
+        use_cann: false
+
+Det:
+    engine_type: "onnxruntime"                # Det uses GPU (high throughput)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "det"
+    
+    # ============================================================================
+    # OFFLINE MODE: Specify local model path
+    # ============================================================================
+    # Option 1: Absolute path (recommended for production)
+    model_path: "C:/ocr_models/ch_PP-OCRv4_det_infer.onnx"
+    
+    # Option 2: Relative path (relative to working directory)
+    # model_path: "./models/ch_PP-OCRv4_det_infer.onnx"
+    
+    # Option 3: Use model_dir instead (directory containing model files)
+    # model_dir: "C:/ocr_models/det_model/"
+    
+    # Option 4: Online mode (automatic download) - set to null
+    # model_path: null
+    # ============================================================================
+    
+    limit_side_len: 736
+    limit_type: min
+    std: [0.5, 0.5, 0.5]
+    mean: [0.5, 0.5, 0.5]
+    thresh: 0.3
+    box_thresh: 0.5
+    max_candidates: 1000
+    unclip_ratio: 1.6
+    use_dilation: true
+    score_mode: fast
+
+Cls:
+    engine_type: "openvino"                   # Cls uses NPU (power efficient)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "cls"
+    
+    # ============================================================================
+    # OFFLINE MODE: Specify local model path
+    # ============================================================================
+    # For OpenVINO models, specify the .xml file
+    # The corresponding .bin file must be in the same directory
+    #
+    # Example structure:
+    #   C:/ocr_models/
+    #   ├── ch_ppocr_mobile_v2.0_cls_infer.xml  ← Specify this
+    #   └── ch_ppocr_mobile_v2.0_cls_infer.bin  ← Must exist
+    
+    model_path: "C:/ocr_models/ch_ppocr_mobile_v2.0_cls_infer.xml"
+    
+    # Alternative: Use relative path
+    # model_path: "./models/ch_ppocr_mobile_v2.0_cls_infer.xml"
+    
+    # Alternative: Use model_dir
+    # model_dir: "C:/ocr_models/cls_model/"
+    
+    # Online mode: set to null
+    # model_path: null
+    # ============================================================================
+    
+    cls_image_shape: [3, 48, 192]
+    cls_batch_num: 6
+    cls_thresh: 0.9
+    label_list: ["0", "180"]
+
+Rec:
+    engine_type: "onnxruntime"                # Rec uses GPU (high throughput)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "rec"
+    
+    # ============================================================================
+    # OFFLINE MODE: Specify local model path and character dictionary
+    # ============================================================================
+    # Recognition model path
+    model_path: "C:/ocr_models/ch_PP-OCRv4_rec_infer.onnx"
+    
+    # Character dictionary path (REQUIRED for recognition)
+    # This file contains the list of characters the model can recognize
+    rec_keys_path: "C:/ocr_models/ppocr_keys_v1.txt"
+    
+    # Alternative: Use relative paths
+    # model_path: "./models/ch_PP-OCRv4_rec_infer.onnx"
+    # rec_keys_path: "./models/ppocr_keys_v1.txt"
+    
+    # Alternative: Use model_dir
+    # model_dir: "C:/ocr_models/rec_model/"
+    # rec_keys_path: "C:/ocr_models/ppocr_keys_v1.txt"
+    
+    # Online mode: set to null
+    # model_path: null
+    # rec_keys_path: null
+    # ============================================================================
+    
+    rec_img_shape: [3, 48, 320]
+    rec_batch_num: 6
+
+# ============================================================================
+# OFFLINE MODE SETUP INSTRUCTIONS
+# ============================================================================
+#
+# 1. DOWNLOAD MODELS (do this once while online):
+#
+#    Option A: Use RapidOCR to download automatically
+#    ```python
+#    from rapidocr_hkmc import RapidOCR
+#    ocr = RapidOCR()  # Downloads models to cache
+#    ```
+#
+#    Option B: Download manually from RapidOCR repository
+#    https://github.com/RapidAI/RapidOCR
+#
+# 2. LOCATE CACHED MODELS:
+#
+#    Windows: C:\Users\<username>\.rapidocr\models\
+#    Linux/Mac: ~/.rapidocr/models/
+#
+# 3. COPY MODELS TO YOUR PROJECT:
+#
+#    Create a models directory and copy the files:
+#    ```
+#    mkdir C:\my_project\models
+#    copy %USERPROFILE%\.rapidocr\models\* C:\my_project\models\
+#    ```
+#
+# 4. UPDATE THIS CONFIG FILE:
+#
+#    Replace the model_path values above with your actual paths:
+#    - Det.model_path: Path to detection model (.onnx)
+#    - Cls.model_path: Path to classification model (.xml)
+#    - Rec.model_path: Path to recognition model (.onnx)
+#    - Rec.rec_keys_path: Path to character dictionary (.txt)
+#
+# 5. VERIFY FILES EXIST:
+#
+#    ```python
+#    from pathlib import Path
+#    
+#    files_to_check = [
+#        "C:/ocr_models/ch_PP-OCRv4_det_infer.onnx",
+#        "C:/ocr_models/ch_ppocr_mobile_v2.0_cls_infer.xml",
+#        "C:/ocr_models/ch_ppocr_mobile_v2.0_cls_infer.bin",  # Required for OpenVINO
+#        "C:/ocr_models/ch_PP-OCRv4_rec_infer.onnx",
+#        "C:/ocr_models/ppocr_keys_v1.txt"
+#    ]
+#    
+#    for file_path in files_to_check:
+#        exists = Path(file_path).exists()
+#        print(f"{'✅' if exists else '❌'} {file_path}")
+#    ```
+#
+# 6. TEST OFFLINE MODE:
+#
+#    ```python
+#    from rapidocr_hkmc import RapidOCR
+#    
+#    # Disconnect internet to verify offline mode
+#    ocr = RapidOCR(config_path='config_offline_example.yaml')
+#    result, elapse = ocr('test_image.jpg')
+#    
+#    print("✅ Offline mode working!" if result else "❌ Check configuration")
+#    ```
+#
+# ============================================================================
+# REQUIRED FILES FOR OFFLINE MODE
+# ============================================================================
+#
+# For ONNXRuntime models (Det, Rec):
+#   - .onnx file (the model)
+#
+# For OpenVINO models (Cls):
+#   - .xml file (model structure)
+#   - .bin file (model weights) - MUST be in same directory as .xml
+#
+# For Recognition:
+#   - Character dictionary .txt file (ppocr_keys_v1.txt)
+#
+# Example directory structure:
+#   C:/ocr_models/
+#   ├── ch_PP-OCRv4_det_infer.onnx              (Detection model)
+#   ├── ch_ppocr_mobile_v2.0_cls_infer.xml      (Classification model structure)
+#   ├── ch_ppocr_mobile_v2.0_cls_infer.bin      (Classification model weights)
+#   ├── ch_PP-OCRv4_rec_infer.onnx              (Recognition model)
+#   └── ppocr_keys_v1.txt                       (Character dictionary)
+#
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+#
+# Issue: "Model file not found"
+# Solution: Verify paths are correct and files exist
+#
+# Issue: OpenVINO fails to load model
+# Solution: Ensure both .xml and .bin files are present
+#
+# Issue: Recognition produces garbage output
+# Solution: Verify rec_keys_path is set correctly
+#
+# Issue: Still trying to download models
+# Solution: Ensure model_path is NOT null
+#
+# For more help, see: OFFLINE_MODE_GUIDE.md
+#
+# ============================================================================

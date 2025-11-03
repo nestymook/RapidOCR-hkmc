@@ -9,3 +9,5 @@ tqdm
 omegaconf
 requests
 colorlog
+openvino>=2023.0.0
+onnxruntime>=1.12.0

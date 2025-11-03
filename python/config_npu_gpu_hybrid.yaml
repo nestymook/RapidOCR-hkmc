@@ -1,0 +1,122 @@
+# RapidOCR HKMC Configuration - NPU + GPU Hybrid (RECOMMENDED)
+# This configuration uses NPU for classification and GPU for detection/recognition
+# Best for: Optimal resource utilization on Intel systems with both NPU and NVIDIA GPU
+# Requirements: Intel Core Ultra with NPU, NVIDIA GPU, OpenVINO 2023.0+, onnxruntime-gpu
+
+Global:
+    text_score: 0.5
+    use_det: true
+    use_cls: true
+    use_rec: true
+    min_height: 30
+    width_height_ratio: 8
+    max_side_len: 2000
+    min_side_len: 30
+    return_word_box: false
+    return_single_char_box: false
+    font_path: null
+    log_level: "info"
+
+EngineConfig:
+    # OpenVINO Configuration for NPU (used by Cls model)
+    openvino:
+        device_name: "NPU"                    # Use Intel NPU for classification
+        inference_num_threads: -1
+        performance_hint: "LATENCY"           # Optimize for low latency
+        performance_num_requests: -1
+        enable_cpu_pinning: null
+        num_streams: -1
+        enable_hyper_threading: null
+        scheduling_core_type: null
+    
+    # ONNXRuntime Configuration for GPU (used by Det and Rec models)
+    onnxruntime:
+        intra_op_num_threads: -1
+        inter_op_num_threads: -1
+        enable_cpu_mem_arena: false
+        
+        # GPU (CUDA) Configuration
+        use_cuda: true                        # Enable CUDA for detection/recognition
+        cuda_ep_cfg:
+            device_id: 0                      # Use first GPU
+            arena_extend_strategy: "kNextPowerOfTwo"
+            cudnn_conv_algo_search: "EXHAUSTIVE"
+            do_copy_in_default_stream: true
+        
+        use_dml: false
+        use_cann: false
+
+Cls:
+    engine_type: "openvino"                   # Cls uses NPU (power efficient)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "cls"
+    model_path: null
+    model_dir: null
+    cls_image_shape: [3, 48, 192]
+    cls_batch_num: 6
+    cls_thresh: 0.9
+    label_list: ["0", "180"]
+
+Det:
+    engine_type: "onnxruntime"                # Det uses GPU (high throughput)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "det"
+    model_path: null
+    model_dir: null
+    limit_side_len: 736
+    limit_type: min
+    std: [0.5, 0.5, 0.5]
+    mean: [0.5, 0.5, 0.5]
+    thresh: 0.3
+    box_thresh: 0.5
+    max_candidates: 1000
+    unclip_ratio: 1.6
+    use_dilation: true
+    score_mode: fast
+
+Rec:
+    engine_type: "onnxruntime"                # Rec uses GPU (high throughput)
+    lang_type: "ch"
+    model_type: "mobile"
+    ocr_version: "PP-OCRv4"
+    task_type: "rec"
+    model_path: null
+    model_dir: null
+    rec_keys_path: null
+    rec_img_shape: [3, 48, 320]
+    rec_batch_num: 6
+
+# Benefits of Hybrid NPU + GPU Configuration:
+# - Optimal resource utilization across hardware
+# - NPU handles lightweight classification (power efficient, ~2-5W)
+# - GPU handles compute-intensive detection and recognition (high throughput)
+# - Best balance of performance and power efficiency
+# - Reduces GPU load by offloading classification to NPU
+#
+# Expected Performance:
+# - Cls on NPU: 5-10ms per image (~2W power)
+# - Det on GPU: 5-15ms per image
+# - Rec on GPU: 3-10ms per batch
+# - Full pipeline: 15-35ms per image
+# - Power consumption: Lower than GPU-only, higher throughput than NPU-only
+#
+# Resource Distribution:
+# - NPU: Handles text orientation classification
+# - GPU: Handles text detection and recognition
+# - CPU: Available for other application tasks
+#
+# Fallback Behavior:
+# - If NPU is not available, Cls falls back to CPU
+# - If GPU is not available, Det and Rec fall back to CPU
+# - System continues to function with warnings logged
+#
+# Why This Configuration is Recommended:
+# 1. Classification is lightweight - NPU is sufficient and power-efficient
+# 2. Detection and recognition are compute-intensive - GPU provides best performance
+# 3. Distributes workload across available hardware
+# 4. Maximizes throughput while minimizing power consumption
+# 5. Best for production deployments on modern Intel + NVIDIA systems

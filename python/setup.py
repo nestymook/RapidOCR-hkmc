@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import List, Union
 
 import setuptools
-from get_pypi_latest_version import GetPyPiLatestVersion
+
+try:
+    from get_pypi_latest_version import GetPyPiLatestVersion
+    has_version_tool = True
+except ImportError:
+    has_version_tool = False
 
 
 def read_txt(txt_path: Union[Path, str]) -> List[str]:
@@ -16,29 +21,36 @@ def read_txt(txt_path: Union[Path, str]) -> List[str]:
 
 
 def get_readme():
-    root_dir = Path(__file__).resolve().parent.parent
-    readme_path = str(root_dir / "docs" / "doc_whl_rapidocr.md")
-    print(readme_path)
-    with open(readme_path, "r", encoding="utf-8") as f:
-        readme = f.read()
-    return readme
+    try:
+        root_dir = Path(__file__).resolve().parent.parent
+        readme_path = str(root_dir / "docs" / "doc_whl_rapidocr.md")
+        print(readme_path)
+        with open(readme_path, "r", encoding="utf-8") as f:
+            readme = f.read()
+        return readme
+    except Exception:
+        return "Awesome OCR Library with NPU/GPU Support"
 
 
-MODULE_NAME = "rapidocr"
+MODULE_NAME = "rapidocr_hkmc"
 
-obtainer = GetPyPiLatestVersion()
-try:
-    latest_version = obtainer(MODULE_NAME)
-except Exception as e:
-    latest_version = "0.0.0"
-VERSION_NUM = obtainer.version_add_one(latest_version, add_patch=True)
+if has_version_tool:
+    obtainer = GetPyPiLatestVersion()
+    try:
+        latest_version = obtainer(MODULE_NAME)
+    except Exception as e:
+        latest_version = "0.0.0"
+    VERSION_NUM = obtainer.version_add_one(latest_version, add_patch=True)
 
-if len(sys.argv) > 2:
-    match_str = " ".join(sys.argv[2:])
-    matched_versions = obtainer.extract_version(match_str)
-    if matched_versions:
-        VERSION_NUM = matched_versions
-sys.argv = sys.argv[:2]
+    if len(sys.argv) > 2:
+        match_str = " ".join(sys.argv[2:])
+        matched_versions = obtainer.extract_version(match_str)
+        if matched_versions:
+            VERSION_NUM = matched_versions
+    sys.argv = sys.argv[:2]
+else:
+    # Default version when get_pypi_latest_version is not available
+    VERSION_NUM = "1.0.0"
 
 project_urls = {
     "Documentation": "https://rapidai.github.io/RapidOCRDocs",
@@ -49,7 +61,7 @@ setuptools.setup(
     name=MODULE_NAME,
     version=VERSION_NUM,
     platforms="Any",
-    description="Awesome OCR Library",
+    description="Awesome OCR Library with NPU/GPU Support",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
     author="SWHL",
@@ -59,11 +71,13 @@ setuptools.setup(
     license="Apache-2.0",
     include_package_data=True,
     install_requires=read_txt("requirements.txt"),
-    package_dir={"": MODULE_NAME},
-    packages=setuptools.find_namespace_packages(where=MODULE_NAME),
+    packages=[MODULE_NAME] + [
+        f"{MODULE_NAME}.{pkg}"
+        for pkg in setuptools.find_packages(where=MODULE_NAME)
+    ],
     package_data={"": ["*.onnx", "*.yaml", "*.txt"]},
     keywords=[
-        "ocr,text_detection,text_recognition,db,onnxruntime,paddleocr,openvino,rapidocr"
+        "ocr,text_detection,text_recognition,db,onnxruntime,paddleocr,openvino,rapidocr,npu,gpu"
     ],
     classifiers=[
         "Programming Language :: Python :: 3.6",
