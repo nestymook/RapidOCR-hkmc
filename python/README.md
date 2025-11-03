@@ -42,6 +42,55 @@ pip install rapidocr_hkmc onnxruntime-gpu
 pip install rapidocr_hkmc-*.whl
 ```
 
+## Building from Source
+
+### Building the Wheel
+
+To build the wheel distribution package from source:
+
+```bash
+# Install build dependencies
+pip install setuptools wheel
+
+# Build the wheel
+python setup.py bdist_wheel
+
+# The wheel file will be created in the dist/ directory
+# Example: dist/rapidocr_hkmc-1.0.0-py3-none-any.whl
+```
+
+### Installing the Built Wheel
+
+After building, install the wheel:
+
+```bash
+# Install the wheel (replace version number with actual version)
+pip install dist/rapidocr_hkmc-*.whl
+
+# Or install with GPU support
+pip install dist/rapidocr_hkmc-*.whl onnxruntime-gpu
+```
+
+### Building with Custom Version
+
+To build with a specific version number:
+
+```bash
+python setup.py bdist_wheel 1.2.3
+```
+
+### Development Installation
+
+For development, install in editable mode:
+
+```bash
+# Install in editable mode with dependencies
+pip install -e .
+
+# Or with development dependencies
+pip install -e .[dev]
+```
+
 ## Hardware Requirements
 
 ### For NPU Support
