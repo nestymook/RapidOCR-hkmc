@@ -24,6 +24,10 @@ EngineConfig:
         inter_op_num_threads: -1
         enable_cpu_mem_arena: false
         
+        # CPU Execution Provider Configuration (required as fallback)
+        cpu_ep_cfg:
+            arena_extend_strategy: "kSameAsRequested"
+        
         # GPU (CUDA) Configuration
         use_cuda: true                        # Enable CUDA for all models
         cuda_ep_cfg:

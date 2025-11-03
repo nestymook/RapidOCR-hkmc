@@ -209,6 +209,8 @@ EngineConfig:
     performance_hint: "LATENCY"
   
   onnxruntime:
+    cpu_ep_cfg:
+      arena_extend_strategy: "kSameAsRequested"
     use_cuda: true
     cuda_ep_cfg:
       device_id: 0
@@ -278,6 +280,8 @@ EngineConfig:
     performance_hint: "LATENCY"
   
   onnxruntime:
+    cpu_ep_cfg:
+      arena_extend_strategy: "kSameAsRequested"
     use_cuda: true                  # GPU for compute-intensive det/rec
     cuda_ep_cfg:
       device_id: 0
